@@ -62,7 +62,7 @@ local function handle_tags(fpath, bufnr, range, user_args)
     "-format", "json",
     "-file", fpath,
     "-w",
-    table.unpack(c.commands.gomodifytags.flag)
+    unpack(c.commands.gomodifytags.flag)
   }
 
   -- `-struct` and `-line` cannot be combined, setting them separately
