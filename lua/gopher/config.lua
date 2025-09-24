@@ -32,10 +32,10 @@ local default_config = {
   ---@class gopher.ConfigCommand
   commands = {
     go = "go",
-    gomodifytags = "gomodifytags",
-    gotests = "gotests",
-    impl = "impl",
-    iferr = "iferr",
+    gomodifytags = { cmd = "gomodifytags", flag = {} },
+    gotests = { cmd = "gotests" },
+    impl = { cmd = "impl", flag = {} },
+    iferr = { cmd = "iferr", flag = {} },
   },
   ---@class gopher.ConfigGotests
   gotests = {
@@ -85,11 +85,11 @@ function config.setup(user_config)
   vim.validate("timeout", _config.timeout, "number")
   vim.validate("installer_timeout", _config.timeout, "number")
   vim.validate("commands", _config.commands, "table")
-  vim.validate("commands.go", _config.commands.go, "string")
-  vim.validate("commands.gomodifytags", _config.commands.gomodifytags, "string")
-  vim.validate("commands.gotests", _config.commands.gotests, "string")
-  vim.validate("commands.impl", _config.commands.impl, "string")
-  vim.validate("commands.iferr", _config.commands.iferr, "string")
+  vim.validate("commands.go", _config.commands.go, "table")
+  vim.validate("commands.gomodifytags", _config.commands.gomodifytags, "table")
+  vim.validate("commands.gotests", _config.commands.gotests, "table")
+  vim.validate("commands.impl", _config.commands.impl, "table")
+  vim.validate("commands.iferr", _config.commands.iferr, "table")
   vim.validate("gotests", _config.gotests, "table")
   vim.validate("gotests.template", _config.gotests.template, "string")
   vim.validate("gotests.template_dir", _config.gotests.template_dir, "string", true)

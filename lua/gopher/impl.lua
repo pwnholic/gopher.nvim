@@ -64,7 +64,7 @@ function impl.impl(...)
   assert(recv ~= "", "receiver not provided")
 
   local dir = vim.fn.fnameescape(vim.fn.expand "%:p:h")
-  local rs = r.sync { c.impl, "-dir", dir, recv, iface }
+  local rs = r.sync { c.impl.cmd, "-dir", dir, recv, iface, unpack(c.impl.flag) }
   if rs.code ~= 0 then
     error("failed to implement interface: " .. rs.stderr)
   end

@@ -19,7 +19,7 @@ function iferr.iferr()
   local pos = vim.fn.getcurpos()[2]
   local fpath = vim.fn.expand "%"
 
-  local cmd = { c.commands.iferr, "-pos", curb }
+  local cmd = { c.commands.iferr.cmd, "-pos", curb, unpack(c.commands.iferr.flag) }
   if c.iferr.message ~= nil and type(c.iferr.message) == "string" then
     table.insert(cmd, "-message")
     table.insert(cmd, c.iferr.message)

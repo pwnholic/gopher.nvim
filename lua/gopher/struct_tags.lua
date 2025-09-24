@@ -57,11 +57,12 @@ local function handle_tags(fpath, bufnr, range, user_args)
 
   -- stylua: ignore
   local cmd = {
-    c.commands.gomodifytags,
+    c.commands.gomodifytags.cmd,
     "-transform", c.gotag.transform,
     "-format", "json",
     "-file", fpath,
     "-w",
+    table.unpack(c.commands.gomodifytags.flag)
   }
 
   -- `-struct` and `-line` cannot be combined, setting them separately
