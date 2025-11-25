@@ -13,7 +13,7 @@ local urls = {
 
 ---@param opt vim.SystemCompleted
 ---@param url string
-local function handle_intall_exit(opt, url)
+local function handle_install_exit(opt, url)
   if opt.code ~= 0 then
     vim.schedule(function()
       u.notify("go install failed: " .. url)
@@ -35,7 +35,7 @@ local function install(url)
   end)
 
   r.async({ c.commands.go, "install", url }, function(opt)
-    handle_intall_exit(opt, url)
+    handle_install_exit(opt, url)
   end, { timeout = c.installer_timeout })
 end
 
@@ -46,7 +46,7 @@ local function install_sync(url)
   end)
 
   local rs = r.sync({ c.commands.go, "install", url }, { timeout = c.installer_timeout })
-  handle_intall_exit(rs, url)
+  handle_install_exit(rs, url)
 end
 
 ---Install required go deps

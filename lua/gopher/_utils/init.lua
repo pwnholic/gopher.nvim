@@ -2,6 +2,10 @@ local c = require "gopher.config"
 local log = require "gopher._utils.log"
 local utils = {}
 
+-- Constants for better maintainability
+utils.CURSOR_LINE_INDEX = 2
+utils.BUFFER_INDEX_OFFSET = 1
+
 ---@param msg string
 ---@param lvl? number by default `vim.log.levels.INFO`
 function utils.notify(msg, lvl)
@@ -36,6 +40,53 @@ end
 function utils.trimend(s)
   local r, _ = string.gsub(s, "%s+$", "")
   return r
+end
+
+-- New utility functions to reduce code duplication
+
+---@return string filepath, number buffer
+function utils.get_current_buffer_info()
+  return vim.fn.expand "%", vim.api.nvim_get_current_buf()
+end
+
+---@param cmd string[]
+---@param args string[]
+---@return string[]
+function utils.build_command(cmd, args)
+  local result = vim.deepcopy(cmd)
+  for _, arg in ipairs(args) do
+    table.insert(result, arg)
+  end
+  return result
+end
+
+---@param rs vim.SystemCompleted|string
+---@param operation string
+---@param context? string
+---@return boolean success
+function utils.handle_command_result(rs, operation, context)
+  if type(rs) ~= "table" then
+    return true -- For backward compatibility
+  end
+
+  if rs.code ~= 0 then
+    local msg = operation
+    if context then
+      msg = msg .. " (" .. context .. ")"
+    end
+    if rs.stderr and rs.stderr ~= "" then
+      msg = msg .. ": " .. rs.stderr
+    end
+    utils.notify(msg, vim.log.levels.ERROR)
+    return false
+  end
+
+  return true
+end
+
+---@return number
+function utils.get_cursor_line()
+  return vim.fn.getcurpos()[utils.CURSOR_LINE_INDEX]
 end
 
 return utils

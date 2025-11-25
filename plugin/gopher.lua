@@ -46,25 +46,21 @@ cmd("GoInstallDepsSync", function()
 end)
 
 -- :GoTag
-cmd("GoTagAdd", function(opts)
-  require("gopher").tags.add {
-    tags = opts.fargs,
-    range = (opts.count ~= -1) and {
-      start = opts.line1,
-      end_ = opts.line2,
-    } or nil,
-  }
-end, "*", true)
+-- Helper function for tag commands to reduce duplication
+local function create_tag_command(action)
+  return function(opts)
+    require("gopher").tags[action] {
+      tags = opts.fargs,
+      range = (opts.count ~= -1) and {
+        start = opts.line1,
+        end_ = opts.line2,
+      } or nil,
+    }
+  end
+end
 
-cmd("GoTagRm", function(opts)
-  require("gopher").tags.rm {
-    tags = opts.fargs,
-    range = (opts.count ~= -1) and {
-      start = opts.line1,
-      end_ = opts.line2,
-    } or nil,
-  }
-end, "*", true)
+cmd("GoTagAdd", create_tag_command "add", "*", true)
+cmd("GoTagRm", create_tag_command "rm", "*", true)
 
 cmd("GoTagClear", function()
   require("gopher").tags.clear()

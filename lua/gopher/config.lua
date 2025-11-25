@@ -17,49 +17,49 @@ local config = {}
 ---@eval return MiniDoc.afterlines_to_code(MiniDoc.current.eval_section)
 ---@class gopher.Config
 local default_config = {
-  -- log level, you might consider using DEBUG or TRACE for debugging the plugin
-  ---@type number
-  log_level = vim.log.levels.INFO,
+    -- log level, you might consider using DEBUG or TRACE for debugging the plugin
+    ---@type number
+    log_level = vim.log.levels.INFO,
 
-  -- timeout for running internal commands
-  ---@type number
-  timeout = 2000,
+    -- timeout for running internal commands (in milliseconds)
+    ---@type number
+    timeout = 5000,
 
-  --- timeout for running installer commands(e.g :GoDepsInstall, :GoDepsInstallSync)
-  installer_timeout = 999999,
+    -- timeout for running installer commands(e.g :GoDepsInstall, :GoDepsInstallSync)
+    installer_timeout = 30000,
 
-  -- user specified paths to binaries
-  ---@class gopher.ConfigCommand
-  commands = {
-    go = "go",
-    gomodifytags = { cmd = "gomodifytags", flag = {} },
-    gotests = { cmd = "gotests" },
-    impl = { cmd = "impl", flag = {} },
-    iferr = { cmd = "iferr", flag = {} },
-  },
-  ---@class gopher.ConfigGotests
-  gotests = {
-    -- gotests doesn't have template named "default" so this plugin uses "default" to set the default template
-    template = "default",
-    -- path to a directory containing custom test code templates
-    ---@type string|nil
-    template_dir = nil,
-    -- switch table tests from using slice to map (with test name for the key)
-    named = false,
-  },
-  ---@class gopher.ConfigGoTag
-  gotag = {
-    ---@type gopher.ConfigGoTagTransform
-    transform = "snakecase",
+    -- user specified paths to binaries
+    ---@class gopher.ConfigCommand
+    commands = {
+        go = "go",
+        gomodifytags = { cmd = "gomodifytags", flag = {}, format = "json" },
+        gotests = { cmd = "gotests" },
+        impl = { cmd = "impl", flag = {} },
+        iferr = { cmd = "iferr", flag = {} },
+    },
+    ---@class gopher.ConfigGotests
+    gotests = {
+        -- gotests doesn't have template named "default" so this plugin uses "default" to set the default template
+        template = "default",
+        -- path to a directory containing custom test code templates
+        ---@type string|nil
+        template_dir = nil,
+        -- switch table tests from using slice to map (with test name for the key)
+        named = false,
+    },
+    ---@class gopher.ConfigGoTag
+    gotag = {
+        ---@type gopher.ConfigGoTagTransform
+        transform = "snakecase",
 
-    -- default tags to add to struct fields
-    default_tag = "json",
-  },
-  iferr = {
-    -- choose a custom error message
-    ---@type string|nil
-    message = nil,
-  },
+        -- default tags to add to struct fields
+        default_tag = "json",
+    },
+    iferr = {
+        -- choose a custom error message
+        ---@type string|nil
+        message = nil,
+    },
 }
 --minidoc_afterlines_end
 
@@ -77,34 +77,34 @@ _config.___plugin_name = "gopher.nvim" ---@diagnostic disable-line: inject-field
 ---@param user_config? gopher.Config
 ---@dochide
 function config.setup(user_config)
-  vim.validate("user_config", user_config, "table", true)
+    vim.validate("user_config", user_config, "table", true)
 
-  _config = vim.tbl_deep_extend("force", vim.deepcopy(default_config), user_config or {})
+    _config = vim.tbl_deep_extend("force", vim.deepcopy(default_config), user_config or {})
 
-  vim.validate("log_level", _config.log_level, "number")
-  vim.validate("timeout", _config.timeout, "number")
-  vim.validate("installer_timeout", _config.timeout, "number")
-  vim.validate("commands", _config.commands, "table")
-  vim.validate("commands.go", _config.commands.go, "string")
-  vim.validate("commands.gomodifytags", _config.commands.gomodifytags, "table")
-  vim.validate("commands.gotests", _config.commands.gotests, "table")
-  vim.validate("commands.impl", _config.commands.impl, "table")
-  vim.validate("commands.iferr", _config.commands.iferr, "table")
-  vim.validate("gotests", _config.gotests, "table")
-  vim.validate("gotests.template", _config.gotests.template, "string")
-  vim.validate("gotests.template_dir", _config.gotests.template_dir, "string", true)
-  vim.validate("gotests.named", _config.gotests.named, "boolean")
-  vim.validate("gotag", _config.gotag, "table")
-  vim.validate("gotag.transform", _config.gotag.transform, "string")
-  vim.validate("gotag.default_tag", _config.gotag.default_tag, "string")
-  vim.validate("iferr", _config.iferr, "table")
-  vim.validate("iferr.message", _config.iferr.message, "string", true)
+    vim.validate("log_level", _config.log_level, "number")
+    vim.validate("timeout", _config.timeout, "number")
+    vim.validate("installer_timeout", _config.timeout, "number")
+    vim.validate("commands", _config.commands, "table")
+    vim.validate("commands.go", _config.commands.go, "string")
+    vim.validate("commands.gomodifytags", _config.commands.gomodifytags, "table")
+    vim.validate("commands.gotests", _config.commands.gotests, "table")
+    vim.validate("commands.impl", _config.commands.impl, "table")
+    vim.validate("commands.iferr", _config.commands.iferr, "table")
+    vim.validate("gotests", _config.gotests, "table")
+    vim.validate("gotests.template", _config.gotests.template, "string")
+    vim.validate("gotests.template_dir", _config.gotests.template_dir, "string", true)
+    vim.validate("gotests.named", _config.gotests.named, "boolean")
+    vim.validate("gotag", _config.gotag, "table")
+    vim.validate("gotag.transform", _config.gotag.transform, "string")
+    vim.validate("gotag.default_tag", _config.gotag.default_tag, "string")
+    vim.validate("iferr", _config.iferr, "table")
+    vim.validate("iferr.message", _config.iferr.message, "string", true)
 end
 
 setmetatable(config, {
-  __index = function(_, key)
-    return _config[key]
-  end,
+    __index = function(_, key)
+        return _config[key]
+    end,
 })
 
 ---@dochide

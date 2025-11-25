@@ -40,40 +40,42 @@ local u = require "gopher._utils"
 local impl = {}
 
 function impl.impl(...)
-  local args = { ... }
-  local iface, recv = "", ""
-  local bufnr = vim.api.nvim_get_current_buf()
+    local args = { ... }
+    local iface, recv = "", ""
+    local _, bufnr = u.get_current_buffer_info()
 
-  if #args == 0 then
-    u.notify("arguments not provided. usage: :GoImpl f *File io.Reader", vim.log.levels.ERROR)
-    return
-  elseif #args == 1 then -- :GoImpl io.Reader
-    local st = ts_utils.get_struct_under_cursor(bufnr)
-    iface = args[1]
-    recv = string.lower(st.name) .. " *" .. st.name
-  elseif #args == 2 then -- :GoImpl w io.Writer
-    local st = ts_utils.get_struct_under_cursor(bufnr)
-    iface = args[2]
-    recv = args[1] .. " *" .. st.name
-  elseif #args == 3 then -- :GoImpl r Struct io.Reader
-    recv = args[1] .. " *" .. args[2]
-    iface = args[3]
-  end
+    if #args == 0 then
+        u.notify("arguments not provided. usage: :GoImpl f *File io.Reader", vim.log.levels.ERROR)
+        return
+    elseif #args == 1 then -- :GoImpl io.Reader
+        local st = ts_utils.get_struct_under_cursor(bufnr)
+        iface = args[1]
+        recv = string.lower(st.name) .. " *" .. st.name
+    elseif #args == 2 then -- :GoImpl w io.Writer
+        local st = ts_utils.get_struct_under_cursor(bufnr)
+        iface = args[2]
+        recv = args[1] .. " *" .. st.name
+    elseif #args == 3 then -- :GoImpl r Struct io.Reader
+        recv = args[1] .. " *" .. args[2]
+        iface = args[3]
+    end
 
-  assert(iface ~= "", "interface not provided")
-  assert(recv ~= "", "receiver not provided")
+    assert(iface ~= "", "interface not provided")
+    assert(recv ~= "", "receiver not provided")
 
-  local dir = vim.fn.fnameescape(vim.fn.expand "%:p:h")
-  local rs = r.sync { c.impl.cmd, "-dir", dir, recv, iface, unpack(c.impl.flag) }
-  if rs.code ~= 0 then
-    error("failed to implement interface: " .. rs.stderr)
-  end
+    local dir = vim.fn.fnameescape(vim.fn.expand "%:p:h")
+    local cmd = u.build_command({ c.impl.cmd }, { "-dir", dir, recv, iface, unpack(c.impl.flag) })
 
-  local pos = vim.fn.getcurpos()[2]
-  local output = u.remove_empty_lines(vim.split(rs.stdout, "\n"))
+    local rs = r.sync(cmd)
+    if not u.handle_command_result(rs, "failed to implement interface") then
+        return
+    end
 
-  table.insert(output, 1, "")
-  vim.fn.append(pos, output)
+    local pos = u.get_cursor_line()
+    local output = u.remove_empty_lines(vim.split(rs.stdout, "\n"))
+
+    table.insert(output, 1, "")
+    vim.fn.append(pos, output)
 end
 
 return impl

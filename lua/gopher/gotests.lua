@@ -24,52 +24,51 @@ local u = require "gopher._utils"
 local log = require "gopher._utils.log"
 local gotests = {}
 
----@param args table
+---@param args string[]
 ---@dochide
 local function add_test(args)
-  if c.gotests.named then
-    table.insert(args, "-named")
-  end
+    local extra_args = {}
 
-  if c.gotests.template_dir then
-    table.insert(args, "-template_dir")
-    table.insert(args, c.gotests.template_dir)
-  end
+    if c.gotests.named then
+        table.insert(extra_args, "-named")
+    end
 
-  if c.gotests.template ~= "default" then
-    table.insert(args, "-template")
-    table.insert(args, c.gotests.template)
-  end
+    if c.gotests.template_dir then
+        vim.list_extend(extra_args, { "-template_dir", c.gotests.template_dir })
+    end
 
-  table.insert(args, "-w")
-  table.insert(args, vim.fn.expand "%")
+    if c.gotests.template ~= "default" then
+        vim.list_extend(extra_args, { "-template", c.gotests.template })
+    end
 
-  log.debug("generating tests with args: ", args)
+    vim.list_extend(extra_args, { "-w", vim.fn.expand "%" })
 
-  local rs = r.sync { c.commands.gotests, unpack(args) }
-  if rs.code ~= 0 then
-    error("gotests failed: " .. rs.stderr)
-  end
+    local cmd = u.build_command({ c.commands.gotests.cmd }, vim.list_extend(args, extra_args))
+    log.debug("generating tests with cmd: ", cmd)
 
-  u.notify "unit test(s) generated"
+    local rs = r.sync(cmd)
+    if not u.handle_command_result(rs, "gotests failed") then
+        return
+    end
+
+    u.notify "unit test(s) generated"
 end
 
 -- generate unit test for one function
 function gotests.func_test()
-  local bufnr = vim.api.nvim_get_current_buf()
-  local func = ts_utils.get_func_under_cursor(bufnr)
-
-  add_test { "-only", func.name }
+    local _, bufnr = u.get_current_buffer_info()
+    local func = ts_utils.get_func_under_cursor(bufnr)
+    add_test { "-only", func.name }
 end
 
 -- generate unit tests for all functions in current file
 function gotests.all_tests()
-  add_test { "-all" }
+    add_test { "-all" }
 end
 
 -- generate unit tests for all exported functions
 function gotests.all_exported_tests()
-  add_test { "-exported" }
+    add_test { "-exported" }
 end
 
 return gotests

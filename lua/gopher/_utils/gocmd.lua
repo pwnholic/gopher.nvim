@@ -7,9 +7,11 @@ local gocmd = {}
 ---@return string[]
 local function if_get(args)
   for i, arg in ipairs(args) do
-    local m = string.match(arg, "^https://(.*)$") or string.match(arg, "^http://(.*)$") or arg
-    table.remove(args, i)
-    table.insert(args, i, m)
+    -- Extract URL path if it's a URL, otherwise keep as is
+    local cleaned = arg:match "^https?://(.*)$" or arg
+    if cleaned ~= arg then
+      args[i] = cleaned
+    end
   end
   return args
 end
@@ -31,17 +33,18 @@ function gocmd.run(subcmd, args)
     error "please provide any arguments"
   end
 
+  -- Process arguments based on subcommand
   if subcmd == "get" then
     args = if_get(args)
-  end
-
-  if subcmd == "generate" then
+  elseif subcmd == "generate" then
     args = if_generate(args)
   end
 
-  local rs = r.sync { c.go, subcmd, unpack(args) }
-  if rs.code ~= 0 then
-    error("go " .. subcmd .. " failed: " .. rs.stderr)
+  local cmd = u.build_command({ c.go }, { subcmd, unpack(args) })
+  local rs = r.sync(cmd)
+
+  if not u.handle_command_result(rs, "go " .. subcmd .. " failed") then
+    error("go " .. subcmd .. " failed")
   end
 
   u.notify(c.go .. " " .. subcmd .. " ran successful")
