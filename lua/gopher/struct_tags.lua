@@ -11,7 +11,7 @@
 ---
 --- To clear all tags from struct run: `:GoTagClear`
 ---
---- NOTE: if you dont specify the tag it will use `json` as default
+--- NOTE: if you don't specify the tag it will use `json` as default
 ---
 --- Example:
 --- >go
@@ -35,7 +35,6 @@ local r = require "gopher._utils.runner"
 local c = require "gopher.config"
 local u = require "gopher._utils"
 local log = require "gopher._utils.log"
-local struct_tags = {}
 
 ---@dochide
 ---@class gopher.StructTagInput
@@ -47,107 +46,137 @@ local struct_tags = {}
 ---@field start number
 ---@field end_ number
 
----@param fpath string
----@param bufnr integer
----@param range? gopher.StructTagRange
----@param user_args string[]
----@dochide
-local function handle_tags(fpath, bufnr, range, user_args)
-  local st = ts.get_struct_under_cursor(bufnr)
+local struct_tags = {}
 
-  -- stylua: ignore
-  local cmd = {
-    c.commands.gomodifytags.cmd,
-    "-transform", c.gotag.transform,
-    "-format", "json",
-    "-file", fpath,
-    "-w",
-    unpack(c.commands.gomodifytags.flag)
-  }
-
-  -- `-struct` and `-line` cannot be combined, setting them separately
-  if range or st.is_varstruct then
-    table.insert(cmd, "-line")
-    table.insert(cmd, string.format("%d,%d", (range or st).start, (range or st).end_))
-  else
-    table.insert(cmd, "-struct")
-    table.insert(cmd, st.name)
-  end
-
-  for _, v in ipairs(user_args) do
-    table.insert(cmd, v)
-  end
-
-  local rs = r.sync(cmd)
-  if rs.code ~= 0 then
-    log.error("tags: failed to set tags " .. rs.stderr)
-    error("failed to set tags " .. rs.stderr)
-  end
-
-  local res = vim.json.decode(rs.stdout)
-  if res["errors"] then
-    log.error("tags: got an error " .. vim.inspect(res))
-    error("failed to set tags " .. vim.inspect(res["errors"]))
-  end
-
-  for i, v in ipairs(res["lines"]) do
-    res["lines"][i] = u.trimend(v)
-  end
-
-  vim.api.nvim_buf_set_lines(
-    bufnr,
-    res["start"] - 1,
-    res["start"] - 1 + #res["lines"],
-    true,
-    res["lines"]
-  )
-end
+-- Helper functions for better organization
 
 ---@param args string[]
 ---@return string
----@dochide
-local function handler_user_tags(args)
-  if #args == 0 then
-    return c.gotag.default_tag
-  end
-  return table.concat(args, ",")
+local function format_user_tags(args)
+    return #args == 0 and c.gotag.default_tag or table.concat(args, ",")
 end
+
+---@param args table
+---@return table
+local function build_command_args(base_args, location_args, user_args)
+    return vim.list_extend(vim.list_extend(base_args, location_args), user_args)
+end
+
+---@param res table
+---@return string[]
+local function process_response_lines(res)
+    local lines = res.lines or {}
+    return vim.tbl_map(u.trimend, lines)
+end
+
+---@param action string
+---@param opts? gopher.StructTagInput
+---@param user_args string[]
+local function handle_tag_action(action, opts, user_args)
+    log.debug(string.format("%s tags", action), opts)
+
+    local fpath, bufnr = u.get_current_buffer_info()
+    local st = ts.get_struct_under_cursor(bufnr)
+
+    if not st and not (opts and opts.range) then
+        u.notify("No struct found under cursor and no range specified", vim.log.levels.ERROR)
+        return
+    end
+
+    -- Build command arguments
+    local base_args = {
+        "-transform",
+        c.gotag.transform,
+        "-format",
+        c.commands.gomodifytags.format or "json",
+        "-file",
+        fpath,
+        "-w",
+    }
+
+    -- Add flags safely
+    if c.commands.gomodifytags.flag and #c.commands.gomodifytags.flag > 0 then
+        vim.list_extend(base_args, c.commands.gomodifytags.flag)
+    end
+
+    -- Determine location (range or struct)
+    local location_args
+    if opts and (opts.range or (st and st.is_varstruct)) then
+        local range = opts.range or st
+        location_args = { "-line", string.format("%d,%d", range.start, range.end_) }
+    elseif st then
+        location_args = { "-struct", st.name }
+    else
+        u.notify("Unable to determine struct location", vim.log.levels.ERROR)
+        return
+    end
+
+    local cmd = u.build_command(
+        { c.commands.gomodifytags.cmd },
+        build_command_args(base_args, location_args, user_args)
+    )
+
+    local rs = r.sync(cmd)
+    if not u.handle_command_result(rs, string.format("failed to %s tags", action)) then
+        return
+    end
+
+    local ok, res = pcall(vim.json.decode, rs.stdout)
+    if not ok or not res then
+        u.notify("Failed to decode command response", vim.log.levels.ERROR)
+        return
+    end
+
+    if res.errors and #res.errors > 0 then
+        local msg = string.format("failed to %s tags: %s", action, vim.inspect(res.errors))
+        log.error("tags: " .. msg)
+        u.notify(msg, vim.log.levels.ERROR)
+        return
+    end
+
+    local trimmed_lines = process_response_lines(res)
+
+    vim.api.nvim_buf_set_lines(
+        bufnr,
+        res.start - u.BUFFER_INDEX_OFFSET,
+        res.start - u.BUFFER_INDEX_OFFSET + #trimmed_lines,
+        true,
+        trimmed_lines
+    )
+end
+
+-- Public API
 
 -- Adds tags to a struct under the cursor
 -- See |gopher.nvim-struct-tags|
 ---@param opts gopher.StructTagInput
----@dochide
 function struct_tags.add(opts)
-  log.debug("adding tags", opts)
+    if not opts then
+        u.notify("opts parameter is required", vim.log.levels.ERROR)
+        return
+    end
 
-  local fpath = vim.fn.expand "%"
-  local bufnr = vim.api.nvim_get_current_buf()
-
-  local user_tags = handler_user_tags(opts.tags)
-  handle_tags(fpath, bufnr, opts.range, { "-add-tags", user_tags })
+    local user_tags = format_user_tags(opts.tags or {})
+    handle_tag_action("add", opts, { "-add-tags", user_tags })
 end
 
 -- Removes tags from a struct under the cursor
 -- See `:h gopher.nvim-struct-tags`
----@dochide
 ---@param opts gopher.StructTagInput
 function struct_tags.remove(opts)
-  log.debug("removing tags", opts)
+    if not opts then
+        u.notify("opts parameter is required", vim.log.levels.ERROR)
+        return
+    end
 
-  local fpath = vim.fn.expand "%"
-  local bufnr = vim.api.nvim_get_current_buf()
-
-  local user_tags = handler_user_tags(opts.tags)
-  handle_tags(fpath, bufnr, opts.range, { "-remove-tags", user_tags })
+    local user_tags = format_user_tags(opts.tags or {})
+    handle_tag_action("remove", opts, { "-remove-tags", user_tags })
 end
 
 -- Removes all tags from a struct under the cursor
 -- See `:h gopher.nvim-struct-tags`
----@dochide
 function struct_tags.clear()
-  local fpath = vim.fn.expand "%"
-  local bufnr = vim.api.nvim_get_current_buf()
-  handle_tags(fpath, bufnr, nil, { "-clear-tags" })
+    handle_tag_action("clear", nil, { "-clear-tags" })
 end
 
 return struct_tags
